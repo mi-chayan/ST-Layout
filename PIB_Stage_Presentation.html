@@ -1,0 +1,818 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Sewing Line Layout Period — PIB Policy</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#1a1a2e;overflow:hidden;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif}
+#stage{width:1920px;height:1080px;transform-origin:top left;position:absolute;background:#F1F5F9;overflow:hidden;display:flex;flex-direction:column}
+@keyframes arD{0%,100%{opacity:.2;transform:translateY(-5px)}50%{opacity:1;transform:translateY(5px)}}
+@keyframes arU{0%,100%{opacity:.2;transform:translateY(5px)}50%{opacity:1;transform:translateY(-5px)}}
+@keyframes arR{0%,100%{opacity:.2;transform:translateX(-5px)}50%{opacity:1;transform:translateX(5px)}}
+.aD{animation:arD .8s ease-in-out infinite;display:inline-block}
+.aU{animation:arU .8s ease-in-out infinite;display:inline-block}
+.aR{animation:arR .8s ease-in-out infinite;display:inline-block}
+button{cursor:pointer;font-family:inherit;transition:all .15s}
+</style>
+</head>
+<body>
+<div id="stage">
+
+  <div style="position:absolute;top:14px;right:24px;z-index:99;display:flex;gap:8px;align-items:center">
+    <button id="import-btn" onclick="triggerBulkImport()" title="Select all day files — auto-assigned by Report Date" style="height:44px;padding:0 16px;border-radius:8px;background:rgba(96,165,250,.15);border:1.5px solid #60A5FA;color:#BFDBFE;font-size:13px;font-weight:700;letter-spacing:.5px">📥 Import</button>
+    <button onclick="exportHTML()" style="height:44px;padding:0 16px;border-radius:8px;background:rgba(16,185,129,.15);border:1.5px solid rgba(16,185,129,.50);color:#6EE7B7;font-size:13px;font-weight:700;letter-spacing:.5px" title="Export as standalone HTML">⬇ Export</button>
+    <button onclick="toggleFS()" id="fsbtn" style="width:44px;height:44px;border-radius:8px;background:rgba(255,255,255,.10);border:1.5px solid rgba(255,255,255,.25);color:#fff;font-size:20px;display:flex;align-items:center;justify-content:center;cursor:pointer" title="Fullscreen (F)">⛶</button>
+  </div>
+
+  <!-- Confirm modal -->
+  <div id="confirm-modal" style="display:none;position:absolute;inset:0;z-index:200;background:rgba(0,0,0,.55);align-items:center;justify-content:center">
+    <div style="background:#0F2044;border:2px solid #DC2626;border-radius:16px;padding:36px 48px;text-align:center;max-width:480px;box-shadow:0 20px 60px rgba(0,0,0,.5)">
+      <div style="font-size:36px;margin-bottom:12px">⚠️</div>
+      <div style="font-size:20px;font-weight:800;color:#F8FAFC;margin-bottom:10px">Clear All Data?</div>
+      <div style="font-size:14px;color:#94A3B8;margin-bottom:28px;line-height:1.6">This will remove all imported Excel data and reset the dashboard. This cannot be undone.</div>
+      <div style="display:flex;gap:16px;justify-content:center">
+        <button onclick="cancelClear()" style="padding:0 32px;height:46px;border-radius:10px;font-size:15px;font-weight:700;background:rgba(255,255,255,.08);border:2px solid #334155;color:#94A3B8">Cancel</button>
+        <button onclick="confirmClear()" style="padding:0 32px;height:46px;border-radius:10px;font-size:15px;font-weight:700;background:#DC2626;border:2px solid #EF4444;color:#fff">Yes, Clear All</button>
+      </div>
+    </div>
+  </div>
+
+  <div style="background:#0F2044;padding:14px 80px 12px;border-bottom:4px solid #2563EB;text-align:center">
+    <div style="font-size:30px;font-weight:800;color:#F8FAFC;letter-spacing:2px;margin-bottom:4px">SEWING LINE LAYOUT PERIOD VISUAL</div>
+    <div id="hdr-meta" style="margin-bottom:4px"></div>
+    <div id="hdr-sub" style="font-size:12px;color:#64748B;letter-spacing:.5px;margin-bottom:12px"></div>
+    <div id="day-btns" style="display:flex;justify-content:center;gap:10px;flex-wrap:wrap"></div>
+  </div>
+
+  <div id="stats" style="display:flex;justify-content:center;align-items:center;gap:16px;padding:10px 80px;background:#E2E8F0;border-bottom:2px solid #CBD5E1"></div>
+
+  <div id="pot-bar" style="display:none"></div>
+
+  <div id="grid-wrap" style="display:flex;justify-content:center;align-items:center;flex:1;min-height:0;overflow:hidden;padding-bottom:32px;cursor:grab;user-select:none">
+    <div id="grid-scroll" style="display:flex;align-items:stretch;gap:0;overflow-x:auto;overflow-y:hidden;max-width:100%;padding:0 8px;scrollbar-width:none;-ms-overflow-style:none">
+      <div id="inlbl" style="display:flex;flex-direction:column;justify-content:center;align-items:center;padding:0 16px;border-right:3px dashed #94A3B8;margin-right:18px;flex-shrink:0">
+        <span style="font-size:20px;font-weight:800;color:#334155;writing-mode:vertical-rl;transform:rotate(180deg);letter-spacing:4px;text-transform:uppercase">Input</span>
+      </div>
+      <div id="grid" style="display:flex;align-items:flex-start;flex-shrink:0"></div>
+      <div id="outlbl" style="display:flex;flex-direction:column;justify-content:center;align-items:center;padding:0 16px;border-left:3px dashed #94A3B8;margin-left:18px;flex-shrink:0">
+        <span style="font-size:20px;font-weight:800;color:#334155;writing-mode:vertical-rl;letter-spacing:4px;text-transform:uppercase">Output</span>
+      </div>
+    </div>
+  </div>
+
+  <div style="position:absolute;bottom:0;left:0;right:0;background:#0A1628;height:34px;display:flex;align-items:center;justify-content:flex-end;padding:0 28px;border-top:2px solid #2563EB">
+    <span style="font-size:13px;color:#60A5FA;font-weight:700;letter-spacing:1px;text-transform:uppercase;opacity:.9">© Snowtex CI Team</span>
+  </div>
+
+</div>
+
+<script>
+// ── DATA ──
+let ALL_WS=[]; let smvM={}; let REAL={}; let importedDays={};
+let headerInfo={company:'—',floor:'—',line:'—',group:'—',startDate:'—',style:'—'};
+let cur=1;
+let viewMode='layout';
+
+const CLR={IDLE:'#475569',D1:'#1D4ED8',D2:'#15803D',D3:'#EA580C',D4:'#7C3AED',D5:'#0E7490',D6:'#B45309',D7:'#BE123C'};
+const LBL={IDLE:'Old Style',D1:'Day 1 · 30%',D2:'Day 2 · 50%',D3:'Day 3 · 65%',D4:'Day 4 · 75%',D5:'Day 5 · 85%',D6:'Day 6 · 90%',D7:'Day 7 · 100%'};
+const CAPEFF={D1:0.30,D2:0.50,D3:0.65,D4:0.75,D5:0.85,D6:0.90,D7:1.00};
+
+// ── Scale stage to viewport ──
+function scaleStage(){
+  const s=document.getElementById('stage');
+  const sc=Math.min(window.innerWidth/1920,window.innerHeight/1080);
+  s.style.transform=`scale(${sc})`;
+  s.style.left=Math.max(0,(window.innerWidth-1920*sc)/2)+'px';
+  s.style.top=Math.max(0,(window.innerHeight-1080*sc)/2)+'px';
+}
+window.addEventListener('resize',scaleStage);
+scaleStage();
+
+// ── Core helpers ──
+// getSt: reads TgtDay directly from REAL[d][w].tgtDay — no calculation needed.
+// The ERP already handles the <5hr exception and puts the correct LC day in col X.
+const getSt   = (w,d)=>{ const r=REAL[d]&&REAL[d][w]; if(!r||!r.tgtDay) return 'IDLE'; return `D${Math.min(7,r.tgtDay)}`; };
+const getDL   = (w,d)=>{ const r=REAL[d]&&REAL[d][w]; return (r&&r.tgtDay)?`Day ${r.tgtDay}`:''; };
+const getTP   = (w,d)=>{ const r=REAL[d]&&REAL[d][w]; return r?r.t:null; };
+const getProd = (w,d)=>{ const r=REAL[d]&&REAL[d][w]; return r?r.p:null; };
+const getPIB  = (w,d)=>{ const r=REAL[d]&&REAL[d][w]; return r?r.pib:null; };
+
+// ── Import: trigger for a specific day slot ──
+function triggerImport(dayNum){
+  const inp=document.createElement('input');
+  inp.type='file'; inp.accept='.xls,.xlsx,.html,.htm';
+  inp.onchange=e=>{ if(e.target.files[0]) processFile(e.target.files[0],dayNum); };
+  inp.click();
+}
+
+// ── Import: clear existing data then pick new files ──
+function triggerBulkImport(){
+  const hasData=ALL_WS.length>0;
+  const doImport=()=>{
+    const inp=document.createElement('input');
+    inp.type='file'; inp.accept='.xls,.xlsx,.html,.htm'; inp.multiple=true;
+    inp.onchange=async e=>{
+      const files=[...e.target.files];
+      if(!files.length) return;
+      let okCount=0,failCount=0,lastDay=null;
+      for(const f of files){
+        try{
+          const day=await processFile(f,null);
+          if(day!=null){okCount++;lastDay=day;}
+          else failCount++;
+        }catch(err){failCount++;console.error('Bulk import error for',f.name,err);}
+      }
+      // Sort all files by Report Date → assigns Day 1, 2, 3... in correct order
+      renumberDaysByDate();
+      rebuildFromImports();
+      cur=1; viewMode='visual';
+      render();
+      if(failCount>0) alert(`Imported ${okCount} file(s). ${failCount} could not be read.`);
+    };
+    inp.click();
+  };
+  if(hasData){
+    // Show warning modal — doImport runs only after user confirms
+    clearAll(doImport);
+  } else {
+    doImport();
+  }
+}
+
+// ── Read file, detect format, dispatch to parser ──
+function processFile(file,dayArg){
+  return new Promise((resolve)=>{
+    const reader=new FileReader();
+    reader.onload=e=>{
+      try{
+        const buf=new Uint8Array(e.target.result);
+        let rows;
+        let head=''; for(let i=0;i<Math.min(buf.length,256);i++) head+=String.fromCharCode(buf[i]);
+        const trimmed=head.replace(/^﻿/,'').trimStart().toLowerCase();
+        const isHTML=trimmed.startsWith('<')&&/<table|<html|<!doctype|<h\d|<div|<span|<meta/i.test(trimmed);
+        if(isHTML){
+          const fullText=new TextDecoder('utf-8',{fatal:false}).decode(buf);
+          rows=parseHtmlReport(fullText);
+        } else {
+          if(typeof XLSX==='undefined'){alert('SheetJS library not loaded.');resolve(null);return;}
+          const wb=XLSX.read(buf,{type:'array'});
+          const sheet=wb.Sheets[wb.SheetNames[0]];
+          rows=XLSX.utils.sheet_to_json(sheet,{header:1,raw:true,defval:null});
+        }
+        const result=extractDayFromRows(rows,dayArg,file.name);
+        if(result==null){resolve(null);return;}
+        resolve(result.dayNum);
+        if(dayArg!==null){cur=result.dayNum;viewMode='visual';render();}
+      }catch(err){
+        alert('Error reading "'+file.name+'": '+err.message);
+        console.error(err); resolve(null);
+      }
+    };
+    reader.readAsArrayBuffer(file);
+  });
+}
+
+// ── Parse HTML-format ERP report (handles rowspan/colspan merged cells) ──
+function parseHtmlReport(html){
+  const doc=new DOMParser().parseFromString(html,'text/html');
+  let companyStr='',dateStr='';
+  doc.querySelectorAll('span,h4,h5,h3,p,div').forEach(el=>{
+    const t=(el.textContent||'').trim();
+    if(!companyStr&&/Company:/i.test(t)&&/Floor:/i.test(t)) companyStr=t.replace(/\s+/g,' ');
+    if(!dateStr&&/Report Date/i.test(t)) dateStr=t.replace(/\s+/g,' ');
+  });
+  // Find the main data table (largest by row count)
+  let bestTable=null,bestSize=0;
+  doc.querySelectorAll('table').forEach(tbl=>{
+    const n=tbl.querySelectorAll('tr').length;
+    if(n>bestSize){bestSize=n;bestTable=tbl;}
+  });
+  if(!bestTable) return [];
+  // Build grid with proper rowspan fill-down
+  const grid=[],pending={};
+  bestTable.querySelectorAll('tr').forEach(tr=>{
+    const tds=[...tr.querySelectorAll('td,th')];
+    const rowOut=[];
+    let tdIdx=0,col=0;
+    const maxCol=32;
+    while(col<maxCol){
+      if(pending[col]&&pending[col].left>0){rowOut[col]=pending[col].val;pending[col].left--;col++;continue;}
+      if(tdIdx>=tds.length){rowOut[col]=null;col++;continue;}
+      const td=tds[tdIdx++];
+      const colspan=parseInt(td.getAttribute('colspan')||'1');
+      const rowspan=parseInt(td.getAttribute('rowspan')||'1');
+      let v=(td.textContent||'').trim();
+      const clean=v.replace(/,/g,'');
+      let val;
+      if(v==='') val=null;
+      else if(/^-?\d+(\.\d+)?%$/.test(clean)) val=parseFloat(clean)/100;
+      else if(/^-?\d+(\.\d+)?$/.test(clean)) val=parseFloat(clean);
+      else val=v;
+      for(let c=0;c<colspan;c++){
+        rowOut[col+c]=val;
+        if(rowspan>1) pending[col+c]={val,left:rowspan-1};
+      }
+      col+=colspan;
+    }
+    grid.push(rowOut);
+  });
+  const out=[];
+  if(companyStr) out.push([companyStr]);
+  if(dateStr) out.push([dateStr]);
+  out.push([]);
+  return out.concat(grid);
+}
+
+// ── Extract per-WS data from a 2D row array ──
+// Column map (always fixed across all ERP files):
+//   A(0)=MC/WS  B(1)=OP ID  F(5)=Prod Pcs  M(12)=Style
+//   S(18)=Working Hr  V(21)=Assign SMV  X(23)=Target Day  Y(24)=Target Eff%  Z(25)=Target Pcs
+function extractDayFromRows(rows,dayArg,fileName){
+  const COL={ws:0,opId:1,pib:3,prod:5,style:12,workHr:18,smv:21,tgtDay:23,eff:24,tgtPcs:25};
+  const isOpId=v=>{ const s=String(v||'').replace(/\D/g,''); return s.length>=7; };
+  // Find data start row
+  let dataStart=-1;
+  for(let i=0;i<Math.min(rows.length,60);i++){
+    const r=rows[i]; if(!r) continue;
+    if(isOpId(r[COL.opId])){dataStart=i;break;}
+  }
+  if(dataStart===-1){
+    alert('Could not find operator data in "'+fileName+'". Expected OP ID (7+ digits) in column B.');
+    return null;
+  }
+  // Scan pre-data rows for meta strings
+  let metaStr='',dateStr='';
+  for(let i=0;i<dataStart;i++){
+    const r=rows[i]; if(!r) continue;
+    for(const c of r){
+      const cell=String(c||'');
+      if(!metaStr&&cell.includes('Company:')) metaStr=cell;
+      if(!dateStr&&/Report Date/i.test(cell)) dateStr=cell;
+    }
+  }
+  // Fill-down merged OP ID cells (operators on 2 styles have rowspan on OP ID)
+  const allDataRows=rows.slice(dataStart);
+  let lastOpId=null,lastOpName=null;
+  allDataRows.forEach(r=>{
+    if(!r) return;
+    if(isOpId(r[COL.opId])){ lastOpId=r[COL.opId]; lastOpName=r[2]; }
+    else if(!r[COL.opId]&&lastOpId){ r[COL.opId]=lastOpId; r[2]=lastOpName; }
+    else { lastOpId=null; lastOpName=null; }
+  });
+  const dataRows=allDataRows.filter(r=>r&&isOpId(r[COL.opId]));
+  // Auto-detect layout style: most common "(L)..." in style column
+  const styleCount={};
+  dataRows.forEach(r=>{
+    const s=String(r[COL.style]||'').trim();
+    if(s.match(/^\(L\)/i)) styleCount[s]=(styleCount[s]||0)+1;
+  });
+  const targetStyle=Object.keys(styleCount).sort((a,b)=>styleCount[b]-styleCount[a])[0]||null;
+  if(!targetStyle){
+    alert('No layout style (starting with "(L)") found in "'+fileName+'".');
+    return null;
+  }
+  const styleRows=dataRows.filter(r=>String(r[COL.style]||'').trim()===targetStyle);
+  // Extract per-WS data — use col X (TgtDay) directly, ERP handles <5hr exception
+  const dayWS={};
+  styleRows.forEach(r=>{
+    const ws=parseInt(r[COL.ws]);
+    if(!ws||isNaN(ws)||ws<=0) return;
+    const assignSMV=parseFloat(r[COL.smv])||0;
+    const targetEff=parseFloat(r[COL.eff])||0;
+    const prodPcs=parseFloat(r[COL.prod])||0;
+    const workHr=parseFloat(r[COL.workHr])||parseFloat(r[20])||0;
+    const tgtPcsZ=parseFloat(r[COL.tgtPcs])||null;
+    const tgtDay=parseInt(r[COL.tgtDay])||null;  // LC day directly from ERP (col X)
+    // Hr Target: formula (60 × TgtEff%) ÷ AssignSMV, fallback to col Z
+    const hrTar=(assignSMV>0&&targetEff>0)?Math.round((60*targetEff)/assignSMV):(tgtPcsZ||null);
+    // Hr Prod: Production Pcs ÷ Working Hours
+    const hrProd=workHr>0?Math.round(prodPcs/workHr):null;
+    const pibAmt=parseFloat(r[COL.pib])||0;
+    if(!dayWS[ws]) dayWS[ws]={t:hrTar,p:hrProd,smv:assignSMV>0?assignSMV:null,tgtDay,eff:targetEff>0?targetEff:null,pib:pibAmt>0?pibAmt:null};
+  });
+  // Resolve calendar day number (auto from Report Date, or manual)
+  let dayNum=dayArg;
+  if(dayNum==null){
+    const fileDate=parseReportDate(dateStr);
+    if(fileDate){
+      const anchors=Object.entries(importedDays)
+        .map(([d,info])=>({d:Number(d),date:parseReportDate(info.dateStr)}))
+        .filter(x=>x.date);
+      if(anchors.length){
+        anchors.sort((a,b)=>a.date-b.date);
+        const base=anchors[0];
+        const diff=Math.round((fileDate-base.date)/(1000*60*60*24));
+        dayNum=base.d+diff;
+      } else {
+        dayNum=1; // first import → Day 1 anchor
+      }
+      // In bulk mode (dayArg===null) skip range check — renumberDaysByDate() will fix order after all files load
+      if(dayArg!==null && (dayNum<1||dayNum>7)){
+        alert(`"${fileName}" resolves to Day ${dayNum} (outside 1–7). Use a manual Day button.`);
+        return null;
+      }
+    } else {
+      if(dayArg!==null){
+        alert(`Could not detect Report Date in "${fileName}". Use a manual Day button instead.`);
+        return null;
+      }
+      // Bulk mode with no date — store under a large temp key, renumber will drop it if needed
+      dayNum = 900 + Object.keys(importedDays).length;
+    }
+  }
+  importedDays[dayNum]={ws:dayWS,dateStr,metaStr,style:targetStyle};
+  // Set header info from earliest calendar day
+  const sortedNums=Object.keys(importedDays).map(Number).sort((a,b)=>a-b);
+  const firstDay=importedDays[sortedNums[0]];
+  if(firstDay){
+    const m=firstDay.metaStr||'';
+    const dm=firstDay.dateStr||'';
+    const get=rx=>{ const x=m.match(rx); return x?x[1].trim().replace(/\s+\|.*$/,''):'—'; };
+    headerInfo={
+      company:get(/Company:\s*([^|]+)/),
+      floor:get(/Floor:\s*([^|]+)/),
+      line:get(/Line:\s*([^|]+)/),
+      group:get(/PIB Group:\s*([^|]+)/),
+      startDate:((dm.match(/Report Date\s*:\s*(.+)/)||[])[1]||'—').trim(),
+      style:firstDay.style||'(L) ...'
+    };
+  }
+  rebuildFromImports();
+  return {dayNum};
+}
+
+// ── Parse "Report Date : 17-May-2026" into a Date ──
+function parseReportDate(str){
+  if(!str) return null;
+  const m=String(str).match(/Report Date\s*:?\s*(.+)/i);
+  const raw=(m?m[1]:str).trim().split(/\s+\|/)[0].trim();
+  let d=new Date(raw.replace(/-/g,' '));
+  if(!isNaN(d)) return d;
+  d=new Date(raw);
+  return isNaN(d)?null:d;
+}
+
+// ── After bulk import: sort all files by Report Date, assign Day 1, 2, 3... in order ──
+function renumberDaysByDate(){
+  const entries=Object.entries(importedDays);
+  if(!entries.length) return;
+  // Sort ascending by actual report date
+  entries.sort((a,b)=>{
+    const da=parseReportDate(a[1].dateStr);
+    const db=parseReportDate(b[1].dateStr);
+    if(!da&&!db) return 0;
+    if(!da) return 1;
+    if(!db) return -1;
+    return da-db;
+  });
+  importedDays={};
+  entries.forEach(([,data],i)=>{ importedDays[i+1]=data; });
+}
+
+// ── Rebuild ALL_WS, smvM, REAL from importedDays ──
+function rebuildFromImports(){
+  const wsSet=new Set();
+  const smvTemp={};
+  Object.values(importedDays).forEach(({ws})=>{
+    Object.entries(ws).forEach(([w,d])=>{
+      w=Number(w); wsSet.add(w);
+      if(d.smv&&d.smv>0) smvTemp[w]=d.smv;
+    });
+  });
+  ALL_WS=[...wsSet].sort((a,b)=>a-b);
+  smvM=smvTemp;
+  // REAL[calDay][ws] = { t, p, tgtDay } — tgtDay is from col X, read directly, no computation
+  REAL={};
+  const sorted=Object.keys(importedDays).map(Number).sort((a,b)=>a-b);
+  sorted.forEach(d=>{
+    REAL[d]={};
+    Object.entries(importedDays[d].ws).forEach(([w,data])=>{
+      REAL[d][Number(w)]={t:data.t,p:data.p,tgtDay:data.tgtDay,eff:data.eff,pib:data.pib};
+    });
+  });
+}
+
+// ── Operator profile icon — clean person silhouette ──
+function sewIcon(){
+  return `<svg viewBox="0 0 40 46" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:36px;display:block">
+    <!-- Head -->
+    <circle cx="20" cy="13" r="10" fill="rgba(255,255,255,.94)"/>
+    <!-- Neck -->
+    <rect x="17" y="22" width="6" height="4" rx="2" fill="rgba(255,255,255,.80)"/>
+    <!-- Shoulders / body -->
+    <path d="M2,46 C2,31 38,31 38,46Z" fill="rgba(255,255,255,.86)"/>
+  </svg>`;
+}
+
+const CW=65, CH=284, FA=38, IW=20;
+const colH=CH*2+FA;
+const pad=n=>String(n).padStart(2,'0');
+
+// ── WS card ──
+// IDLE: minimal — WS number + "Old Style" only, no SMV/target/prod
+// Layout (D1-D7): WS number + Day label + SMV + Target pcs/hr + Prod pcs/hr
+function card(w,d){
+  const vis=(viewMode==='visual');
+  const s=vis?'IDLE':getSt(w,d);
+  const bg=CLR[s];
+  const isLayout=(s!=='IDLE');
+
+  if(!isLayout){
+    // ── Old Style card — same structure as layout card, no data rows ──
+    return `<div style="width:${CW}px;height:${CH}px;background:${bg};border-radius:10px;padding:6px 4px 6px;display:flex;flex-direction:column;align-items:center;box-shadow:0 2px 8px rgba(0,0,0,.18)">
+      <div style="width:${CW-8}px;flex-shrink:0">${sewIcon()}</div>
+      <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:space-evenly;width:100%;padding:2px 0">
+        <div style="font-size:15px;font-weight:800;color:#fff;text-align:center;letter-spacing:.6px;text-shadow:0 1px 2px rgba(0,0,0,.3)">WS ${pad(w)}</div>
+        <div style="font-size:11px;font-weight:700;color:rgba(255,255,255,.50);text-align:center;background:rgba(255,255,255,.10);border-radius:4px;padding:1px 6px">Old Style</div>
+        <div style="font-size:10px;color:rgba(255,255,255,.20);text-align:center">—</div>
+        <div style="font-size:10px;color:rgba(255,255,255,.20);text-align:center">—</div>
+        <div style="font-size:10px;color:rgba(255,255,255,.20);text-align:center">—</div>
+        <div style="font-size:10px;color:rgba(255,255,255,.20);text-align:center">—</div>
+      </div>
+    </div>`;
+  }
+
+  // ── Layout card (D1–D7) ──
+  const dl=getDL(w,d);
+  const t=getTP(w,d);
+  const p=getProd(w,d);
+  const pib=getPIB(w,d);
+  const smv=smvM[w]?smvM[w].toFixed(2):null;
+
+  const smvRow=smv
+    ?`<div style="font-size:10px;color:rgba(255,255,255,.70);text-align:center;line-height:1.3">SMV <strong style="color:#fff">${smv}</strong></div>`
+    :`<div style="font-size:10px;color:rgba(255,255,255,.30);text-align:center">SMV —</div>`;
+
+  const tRow=t!==null
+    ?`<div style="font-size:12px;font-weight:700;color:#FDE68A;text-align:center;line-height:1.4;text-shadow:0 1px 2px rgba(0,0,0,.3)">Tgt: ${t} pcs/hr</div>`
+    :`<div style="font-size:10px;color:rgba(255,255,255,.30);text-align:center">Tgt: —</div>`;
+
+  const pRow=p!==null
+    ?`<div style="font-size:12px;font-weight:700;color:#fff;text-align:center;line-height:1.4;text-shadow:0 1px 2px rgba(0,0,0,.3)">Prd: ${p} pcs/hr</div>`
+    :`<div style="font-size:10px;color:rgba(255,255,255,.25);text-align:center">Prd: —</div>`;
+
+  const pibRow=pib!=null
+    ?`<div style="font-size:11px;font-weight:800;color:#FCD34D;text-align:center;line-height:1.3">PIB ${Math.round(pib)}<span style="font-size:8px;font-weight:700;opacity:.80"> Tk</span></div>`
+    :`<div style="font-size:10px;color:rgba(255,255,255,.22);text-align:center">PIB —</div>`;
+
+  return `<div style="width:${CW}px;height:${CH}px;background:${bg};border-radius:10px;padding:6px 4px 6px;display:flex;flex-direction:column;align-items:center;box-shadow:0 2px 8px rgba(0,0,0,.25)">
+    <div style="width:${CW-8}px;flex-shrink:0">${sewIcon()}</div>
+    <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:space-evenly;width:100%;padding:2px 0">
+      <div style="font-size:15px;font-weight:800;color:#fff;text-align:center;letter-spacing:.6px;text-shadow:0 1px 2px rgba(0,0,0,.3)">WS ${pad(w)}</div>
+      <div style="font-size:11px;font-weight:700;color:rgba(255,255,255,.92);text-align:center;background:rgba(255,255,255,.15);border-radius:4px;padding:1px 6px">${dl}</div>
+      ${smvRow}
+      ${tRow}
+      ${pRow}
+      ${pibRow}
+    </div>
+  </div>`;
+}
+
+// ── Arrow helpers ──
+// Only draw arrows between WS that are sequential in the production line (|a-b| <= 3)
+function wsClose(a,b){
+  if(a==null||b==null) return false;
+  return Math.abs(Number(a)-Number(b))<=3;
+}
+
+function vArrow(down,w1,w2){
+  // Vertical arrow between top and bottom card in a column
+  if(!wsClose(w1,w2)){
+    return `<div style="height:${FA}px"></div>`;
+  }
+  return `<div style="height:${FA}px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px">
+    <div style="width:2px;height:10px;background:#94A3B8;border-radius:1px"></div>
+    <span class="${down?'aD':'aU'}" style="color:#334155;font-size:20px;line-height:1;filter:drop-shadow(0 1px 2px rgba(0,0,0,.2))">${down?'▼':'▲'}</span>
+    <div style="width:2px;height:4px;background:#94A3B8;border-radius:1px"></div>
+  </div>`;
+}
+
+function hArrow(gapIdx,wsL,wsR){
+  // Horizontal arrow between columns — show only if WS numbers are sequential
+  const atBot=(gapIdx%2===0);
+  const aTop=atBot?(CH+FA+Math.round(CH/2)-14):(Math.round(CH/2)-14);
+  const show=wsClose(wsL,wsR);
+  return `<div style="width:${IW}px;height:${colH}px;flex-shrink:0;position:relative">
+    ${show?`<div style="position:absolute;top:${aTop}px;left:0;width:${IW}px;display:flex;flex-direction:column;align-items:center;gap:3px">
+      <div style="width:2px;height:8px;background:#94A3B8;border-radius:1px"></div>
+      <span class="aR" style="color:#1E293B;font-size:18px;line-height:1;filter:drop-shadow(0 1px 2px rgba(0,0,0,.15))">▶</span>
+      <div style="width:2px;height:8px;background:#94A3B8;border-radius:1px"></div>
+    </div>`:''}
+  </div>`;
+}
+
+// ── Clear data ──
+let _afterClearFn=null; // callback after confirmed clear (used by Clear & Import)
+function clearAll(afterFn){
+  _afterClearFn=afterFn||null;
+  const m=document.getElementById('confirm-modal');
+  m.style.display='flex'; m.style.alignItems='center'; m.style.justifyContent='center';
+}
+function cancelClear(){
+  _afterClearFn=null;
+  document.getElementById('confirm-modal').style.display='none';
+}
+function confirmClear(){
+  importedDays={}; ALL_WS=[]; smvM={}; REAL={};
+  headerInfo={company:'—',floor:'—',line:'—',group:'—',startDate:'—',style:'—'};
+  cur=1; viewMode='visual';
+  document.getElementById('confirm-modal').style.display='none';
+  render();
+  if(_afterClearFn){ _afterClearFn(); _afterClearFn=null; }
+}
+
+// ── Format short date from importedDays[d].dateStr ──
+function fmtShortDate(d){
+  const ds=importedDays[d]&&importedDays[d].dateStr||'';
+  const m=String(ds).match(/(\d{1,2}[-\/]\w+[-\/]\d{2,4})/);
+  if(!m) return '';
+  const dt=new Date(m[1].replace(/-/g,' '));
+  if(isNaN(dt)) return m[1];
+  return dt.toLocaleDateString('en-GB',{day:'2-digit',month:'short'});
+}
+
+// ── Detect <5hr exception: same tgtDay as previous calendar day ──
+function isRepeatedDay(w,d){
+  if(d<=1) return false;
+  const prev=REAL[d-1]&&REAL[d-1][w];
+  const curr=REAL[d]&&REAL[d][w];
+  if(!prev||!curr||!prev.tgtDay||!curr.tgtDay) return false;
+  return prev.tgtDay===curr.tgtDay;
+}
+
+// ── Sort WS by WS number ascending (input → output production flow) ──
+// Color coding reflects LC day status; order reflects physical line layout
+function getSortedWS(){
+  return [...ALL_WS].sort((a,b)=>a-b);
+}
+
+// ── Main render ──
+function render(){
+  const vis=(viewMode==='visual');
+  const hasAny=ALL_WS.length>0;
+
+  // Update Import button label based on data state
+  const importBtn=document.getElementById('import-btn');
+  if(importBtn){
+    if(hasAny){
+      importBtn.innerHTML='✕ Clear &amp; Import';
+      importBtn.style.background='rgba(220,38,38,.18)';
+      importBtn.style.borderColor='rgba(220,38,38,.60)';
+      importBtn.style.color='#FCA5A5';
+    } else {
+      importBtn.innerHTML='📥 Import';
+      importBtn.style.background='rgba(96,165,250,.15)';
+      importBtn.style.borderColor='#60A5FA';
+      importBtn.style.color='#BFDBFE';
+    }
+  }
+
+  // Header — single meta line; style name sits right of Layout Start
+  const styleName=(headerInfo.style||'').replace(/^\(L\)\s*/i,'').trim()||'—';
+  document.getElementById('hdr-meta').innerHTML=`
+    <div style="display:flex;justify-content:center;align-items:center;gap:16px;flex-wrap:wrap">
+      <span style="font-size:13px;font-weight:700;color:#FDE68A">${headerInfo.company}</span>
+      <span style="color:#334155">|</span>
+      <span style="font-size:13px;color:#94A3B8">Floor: <strong style="color:#E2E8F0">${headerInfo.floor}</strong></span>
+      <span style="color:#334155">|</span>
+      <span style="font-size:13px;color:#94A3B8">Line: <strong style="color:#E2E8F0">${headerInfo.line}</strong></span>
+      <span style="color:#334155">|</span>
+      <span style="font-size:13px;color:#94A3B8">PIB Group: <strong style="color:#E2E8F0">${headerInfo.group}</strong></span>
+      <span style="color:#334155">|</span>
+      <span style="font-size:13px;color:#94A3B8">Layout Start: <strong style="color:#5EEAD4">${headerInfo.startDate}</strong></span>
+      <span style="color:#334155">|</span>
+      <span style="font-size:13px;color:#94A3B8">Style: <strong style="color:#E2E8F0">${styleName}</strong></span>
+    </div>`;
+  document.getElementById('hdr-sub').innerHTML='';
+
+  // Day buttons — only show imported days; date label underneath each button
+  const importedDayNums=Object.keys(importedDays).map(Number).sort((a,b)=>a-b);
+  const dayBtns=importedDayNums.map(d=>{
+    const a=!vis&&d===cur;
+    const dateLabel=fmtShortDate(d);
+    return `<div style="display:flex;flex-direction:column;align-items:center;gap:3px">
+      <button onclick="setDay(${d})" style="padding:0 20px;height:38px;border-radius:8px;font-size:13px;font-weight:700;background:${a?'#2563EB':'rgba(255,255,255,.10)'};border:2px solid ${a?'#60A5FA':'#2A4A7A'};color:${a?'#fff':'#CBD5E1'}">Day ${d}</button>
+      <span style="font-size:11px;color:${a?'#5EEAD4':'#475569'};font-weight:600;letter-spacing:.3px">${dateLabel}</span>
+    </div>`;
+  }).join('');
+  const divider=importedDayNums.length?`<div style="width:2px;height:44px;background:rgba(255,255,255,.20);border-radius:1px;align-self:center;margin:0 4px"></div>`:'';
+  document.getElementById('day-btns').innerHTML=
+    `<div style="display:flex;flex-direction:column;align-items:center;gap:3px">
+      <button onclick="setVisual()" style="padding:0 18px;height:38px;border-radius:8px;font-size:13px;font-weight:700;background:${vis?'#0D9488':'rgba(255,255,255,.08)'};border:2px solid ${vis?'#5EEAD4':'#2A4A7A'};color:${vis?'#fff':'#94A3B8'}">Line Visual</button>
+      <span style="font-size:11px;color:rgba(255,255,255,.0)">—</span>
+    </div>`+
+    divider+dayBtns;
+
+  // Empty state
+  if(!hasAny){
+    document.getElementById('stats').innerHTML=`
+      <div style="display:flex;align-items:center;gap:12px;padding:6px 20px;border-radius:8px;background:#fff;border:2px solid #2563EB44">
+        <span style="font-size:15px;color:#475569;font-weight:600">No data — click <strong>📥 Import</strong> (top-right) to upload all day files at once</span>
+      </div>`;
+    document.getElementById('pot-bar').innerHTML='';
+    document.getElementById('grid').innerHTML=`
+      <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:24px;padding:60px 80px;text-align:center">
+        <div style="font-size:64px;opacity:.25">📂</div>
+        <div style="font-size:22px;font-weight:700;color:#94A3B8">Import Excel files to build the dashboard</div>
+        <div style="font-size:15px;color:#CBD5E1;max-width:640px;line-height:1.7">
+          <strong style="color:#60A5FA">📥 Import All</strong> — select all your day files at once. Each file is auto-assigned to the right day by its Report Date.<br>
+          <strong style="color:#60A5FA">📂 Layout Day N</strong> — import a single specific day.<br>
+          <span style="color:#94A3B8;font-size:13px">Supports ERP .xls (HTML-format) and .xlsx files.</span>
+        </div>
+      </div>`;
+    return;
+  }
+
+  // ── Unified summary table — columns = only LC days present across ALL imported data ──
+  const allDayKeys=['D1','D2','D3','D4','D5','D6','D7'];
+  const ORD={D1:'1st',D2:'2nd',D3:'3rd',D4:'4th',D5:'5th',D6:'6th',D7:'7th'};
+  // EFF from actual col Y data — pick first valid eff per LC day across all imported days
+  const EFF={};
+  allDayKeys.forEach(k=>{
+    const dayNum=parseInt(k.slice(1));
+    outer: for(const calDay of Object.keys(REAL).map(Number)){
+      for(const ws of Object.values(REAL[calDay])){
+        if(ws.tgtDay===dayNum&&ws.eff!=null){
+          EFF[k]=Math.round(ws.eff*100)+'%';
+          break outer;
+        }
+      }
+    }
+  });
+
+  // Find which LC days exist across ALL imported days (fixes columns regardless of selected day)
+  const usedKeys=new Set();
+  Object.values(REAL).forEach(dayObj=>{
+    Object.values(dayObj).forEach(ws=>{ if(ws.tgtDay) usedKeys.add(`D${Math.min(7,ws.tgtDay)}`); });
+  });
+  const dayKeys=allDayKeys.filter(k=>usedKeys.has(k));
+
+  // Total PIB for current day
+  let totalPIB=0,hasPIB=false;
+  if(!vis){
+    ALL_WS.forEach(w=>{ const v=getPIB(w,cur); if(v!=null){totalPIB+=v;hasPIB=true;} });
+  }
+
+  // Count + potential for CURRENT selected day
+  const cnt={}; dayKeys.forEach(k=>cnt[k]=0);
+  const pot={}; dayKeys.forEach(k=>pot[k]={sum:0,valid:0});
+  if(!vis){
+    ALL_WS.forEach(w=>{
+      const s=getSt(w,cur);
+      if(s!=='IDLE'&&cnt[s]!==undefined){
+        cnt[s]++;
+        const t=getTP(w,cur);
+        if(t!=null){pot[s].sum+=t;pot[s].valid++;}
+      }
+    });
+  }
+  const avgOf=g=>g.valid>0?Math.round(g.sum/g.valid):null;
+
+  // Cell helpers
+  const COL_W='128px';
+  const thLabel=`<th style="padding:8px 14px;font-size:11px;font-weight:700;color:#64748B;background:#F1F5F9;text-align:left;border:1px solid #CBD5E1;white-space:nowrap;min-width:136px;text-transform:uppercase;letter-spacing:.5px">Metric</th>`;
+  const thDay=k=>{
+    const active=!vis&&cnt[k]>0;
+    return `<th style="padding:0;border:1px solid ${active?CLR[k]+'99':'#CBD5E1'};min-width:${COL_W};width:${COL_W};background:${active?CLR[k]+'1A':'#F8FAFC'}">
+      <div style="display:flex;flex-direction:column;align-items:center">
+        <div style="width:100%;height:14px;background:${CLR[k]};opacity:${active?'1':'.28'}"></div>
+        <div style="padding:6px 8px 7px;text-align:center">
+          <div style="font-size:12px;font-weight:800;color:${active?CLR[k]:'#94A3B8'};letter-spacing:.2px">${ORD[k]} Day Target</div>
+        </div>
+      </div>
+    </th>`;
+  };
+  const tdLabel=txt=>`<td style="padding:8px 14px;font-size:11px;font-weight:700;color:#64748B;background:#F1F5F9;text-align:left;border:1px solid #E2E8F0;white-space:nowrap;text-transform:uppercase;letter-spacing:.5px">${txt}</td>`;
+  const tdVal=(k,val,emph)=>{
+    const active=!vis&&cnt[k]>0;
+    const color=active?(emph?CLR[k]:'#0F172A'):'#B0BCCC';
+    return `<td style="padding:8px 8px;font-size:${emph?'20':'14'}px;font-weight:${emph?'900':'600'};color:${color};background:${active&&emph?CLR[k]+'14':'#fff'};text-align:center;border:1px solid ${active?CLR[k]+'55':'#E2E8F0'};white-space:nowrap">${val}</td>`;
+  };
+
+  // Build rows (no data = show —)
+  const tHead=`<tr>${thLabel}${dayKeys.map(thDay).join('')}</tr>`;
+  const tR1=`<tr>${tdLabel('Target Eff%')}${dayKeys.map(k=>tdVal(k,EFF[k]||'',false)).join('')}</tr>`;
+  const tR2=`<tr>${tdLabel('No. of W/S')}${dayKeys.map(k=>tdVal(k,cnt[k]>0?cnt[k]:'—',true)).join('')}</tr>`;
+  const tR3=`<tr>${tdLabel('Avg Target Pcs/Hr')}${dayKeys.map(k=>{const a=avgOf(pot[k]);return tdVal(k,a!=null?a+'':'—',false);}).join('')}</tr>`;
+
+  const tbl=`<table style="border-collapse:collapse;border-radius:10px;overflow:hidden;box-shadow:0 2px 10px rgba(0,0,0,.10);table-layout:fixed"><thead>${tHead}</thead><tbody>${tR1}${tR2}${tR3}</tbody></table>`;
+  const pibCard=!vis?`<div style="align-self:stretch;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#0F2044;border-radius:10px;padding:10px 24px;box-shadow:0 4px 16px rgba(0,0,0,.28);min-width:152px;flex-shrink:0;border:2px solid #2563EB;gap:4px">
+    <div style="font-size:10px;font-weight:700;color:rgba(255,255,255,.50);letter-spacing:1px;text-transform:uppercase">Total PIB · Day ${cur}</div>
+    <div style="font-size:30px;font-weight:800;color:#FCD34D;line-height:1;letter-spacing:-.5px">${hasPIB?Math.round(totalPIB).toLocaleString():'—'}<span style="font-size:14px;font-weight:700;color:rgba(255,255,255,.65);margin-left:3px">Tk</span></div>
+    <div style="font-size:10px;color:rgba(255,255,255,.35)">${hasPIB?ALL_WS.length+' workstations':'No PIB data'}</div>
+  </div>`:'';
+  document.getElementById('stats').innerHTML=`<div style="display:flex;align-items:stretch;justify-content:center;gap:18px;padding:2px 0">${tbl}${pibCard}</div>`;
+  document.getElementById('pot-bar').innerHTML='';
+
+  // ── Zigzag WS grid ──
+  // Layout view: sorted by TgtDay DESC (highest LC day first) then WS number
+  // Visual view: sorted by WS number
+  const sortedWS=getSortedWS();
+  const R1=[],R2=[];
+  for(let i=0;i<sortedWS.length;i+=2){
+    R1.push(sortedWS[i]);
+    R2.push(sortedWS[i+1]!==undefined?sortedWS[i+1]:null);
+  }
+  const NCOLS=R1.length;
+  let g='';
+  for(let c=0;c<NCOLS;c++){
+    const w1=R1[c],w2=R2[c];
+    if(c>0){
+      // Horizontal arrow: connects bottom[c-1]→bottom[c] (even gap) or top[c-1]→top[c] (odd gap)
+      const atBot=(c-1)%2===0;
+      const wsL=atBot?R2[c-1]:R1[c-1];
+      const wsR=atBot?R2[c]:R1[c];
+      g+=hArrow(c-1,wsL,wsR);
+    }
+    const down=(c%2===0);
+    const badge=(w,d)=>isRepeatedDay(w,d)?`<div style="position:absolute;bottom:0;left:0;right:0;background:#F59E0B;border-radius:0 0 10px 10px;padding:2px 0;font-size:8px;font-weight:800;color:#fff;letter-spacing:.5px;text-align:center;line-height:1.2">&lt;5 Hrs ↺</div>`:'';
+    const wrapCard=(w,d)=>w!==null?`<div style="position:relative;display:inline-block">${card(w,d)}${badge(w,d)}</div>`:`<div style="width:${CW}px;height:${CH}px;"></div>`;
+    g+=`<div style="display:flex;flex-direction:column;align-items:center">
+      ${wrapCard(w1,cur)}
+      ${vArrow(down,w1,w2)}
+      ${w2!==null?wrapCard(w2,cur):`<div style="width:${CW}px;height:${CH}px;"></div>`}
+    </div>`;
+  }
+  document.getElementById('grid').innerHTML=g;
+
+  // Legend removed (color key is now in the table header)
+
+  requestAnimationFrame(()=>{
+    const h=document.getElementById('grid')?.offsetHeight||0;
+    const inlbl=document.getElementById('inlbl');
+    const outlbl=document.getElementById('outlbl');
+    if(inlbl) inlbl.style.height=h+'px';
+    if(outlbl) outlbl.style.height=h+'px';
+  });
+}
+
+// ── Fullscreen ──
+function toggleFS(){
+  if(!document.fullscreenElement){
+    document.documentElement.requestFullscreen();
+    document.getElementById('fsbtn').textContent='✕';
+  } else {
+    document.exitFullscreen();
+  }
+}
+document.addEventListener('fullscreenchange',()=>{
+  if(!document.fullscreenElement) document.getElementById('fsbtn').textContent='⛶';
+});
+function setVisual(){viewMode='visual';render();}
+function setDay(d){cur=d;viewMode='layout';render();}
+document.addEventListener('keydown',e=>{
+  if(viewMode==='layout'){
+    if(e.key==='ArrowRight'&&cur<7) setDay(cur+1);
+    if(e.key==='ArrowLeft'&&cur>1) setDay(cur-1);
+  }
+  if(e.key==='f'||e.key==='F') toggleFS();
+});
+
+// ── Export: snapshot current data into standalone HTML ──
+function exportHTML(){
+  const src=document.documentElement.outerHTML;
+  const injected=src
+    .replace(
+      /\/\/ ── DATA ──\s*\nlet ALL_WS=.*?let importedDays=\{.*?\};/s,
+      `// ── DATA ──\n`+
+      `let ALL_WS=${JSON.stringify(ALL_WS)}; let smvM=${JSON.stringify(smvM)}; let REAL=${JSON.stringify(REAL)}; let importedDays=${JSON.stringify(importedDays)};`
+    )
+    .replace(/let headerInfo=\{[^;]+\};/,`let headerInfo=${JSON.stringify(headerInfo)};`)
+    .replace(/let cur=\d+;/,`let cur=${cur};`)
+    .replace(/let viewMode='[^']+';/,`let viewMode='${viewMode}';`);
+  const blob=new Blob([injected],{type:'text/html'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  const line=(headerInfo.line||'line').replace(/\s/g,'');
+  const date=new Date().toISOString().slice(0,10);
+  a.download=`PIB_Layout_${line}_Day${cur}_${date}.html`;
+  a.click();
+}
+
+render();
+
+// ── Drag-to-scroll on grid-wrap ──
+(function(){
+  const wrap=document.getElementById('grid-wrap');
+  const scroll=document.getElementById('grid-scroll');
+  let dragging=false,startX=0,scrollLeft=0;
+  wrap.addEventListener('mousedown',e=>{
+    dragging=true; startX=e.pageX; scrollLeft=scroll.scrollLeft;
+    wrap.style.cursor='grabbing';
+  });
+  document.addEventListener('mouseup',()=>{ dragging=false; wrap.style.cursor='grab'; });
+  document.addEventListener('mousemove',e=>{
+    if(!dragging) return;
+    e.preventDefault();
+    scroll.scrollLeft=scrollLeft-(e.pageX-startX);
+  });
+  // Hide scrollbar via style injection
+  const st=document.createElement('style');
+  st.textContent='#grid-scroll::-webkit-scrollbar{display:none}';
+  document.head.appendChild(st);
+})();
+</script>
+</body>
+</html>
