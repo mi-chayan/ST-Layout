@@ -14,6 +14,10 @@ body{background:#1a1a2e;overflow:hidden;font-family:-apple-system,BlinkMacSystem
 .aD{animation:arD .8s ease-in-out infinite;display:inline-block}
 .aU{animation:arU .8s ease-in-out infinite;display:inline-block}
 .aR{animation:arR .8s ease-in-out infinite;display:inline-block}
+@keyframes dayFadeIn{0%{opacity:.8}100%{opacity:1}}
+@keyframes dayFadeOut{0%{opacity:1}100%{opacity:.8}}
+.day-enter .ws-card{animation:dayFadeIn .15s ease-out both}
+.day-exit .ws-card{animation:dayFadeOut .1s ease-in both}
 button{cursor:pointer;font-family:inherit;transition:all .15s}
 </style>
 </head>
@@ -596,8 +600,6 @@ function render(){
       <span style="color:#334155">|</span>
       <span style="font-size:13px;color:#94A3B8">Line: <strong style="color:#E2E8F0">${headerInfo.line}</strong></span>
       <span style="color:#334155">|</span>
-      <span style="font-size:13px;color:#94A3B8">PIB Group: <strong style="color:#E2E8F0">${headerInfo.group}</strong></span>
-      <span style="color:#334155">|</span>
       <span style="font-size:13px;color:#94A3B8">Layout Start: <strong style="color:#5EEAD4">${headerInfo.startDate}</strong></span>
       <span style="color:#334155">|</span>
       <span style="font-size:13px;color:#94A3B8">Style: <strong style="color:#E2E8F0">${styleName}</strong></span>
@@ -764,7 +766,8 @@ function render(){
     }
     const down=(c%2===0);
     const badge=(w,d)=>isRepeatedDay(w,d)?`<div style="position:absolute;bottom:0;left:0;right:0;background:#F59E0B;border-radius:0 0 10px 10px;padding:2px 0;font-size:8px;font-weight:800;color:#fff;letter-spacing:.5px;text-align:center;line-height:1.2">&lt;5 Hrs ↺</div>`:'';
-    const wrapCard=(w,d)=>w!==null?`<div style="position:relative;display:inline-block">${card(w,d)}${badge(w,d)}</div>`:`<div style="width:${CW}px;height:${CH}px;"></div>`;
+    const stagger=`animation-delay:${c*18}ms`;
+    const wrapCard=(w,d)=>w!==null?`<div class="ws-card" style="position:relative;display:inline-block;${stagger}">${card(w,d)}${badge(w,d)}</div>`:`<div style="width:${CW}px;height:${CH}px;"></div>`;
     g+=`<div style="display:flex;flex-direction:column;align-items:center">
       ${wrapCard(w1,cur)}
       ${vArrow(down,w1,w2)}
@@ -797,11 +800,19 @@ document.addEventListener('fullscreenchange',()=>{
   if(!document.fullscreenElement) document.getElementById('fsbtn').textContent='⛶';
 });
 function setVisual(){viewMode='visual';render();}
-function setDay(d){cur=d;viewMode='layout';render();}
+function setDay(d){
+  const grid=document.getElementById('grid');
+  if(grid) grid.classList.add('day-exit');
+  setTimeout(()=>{
+    cur=d; viewMode='layout'; render();
+    const g2=document.getElementById('grid');
+    if(g2){g2.classList.remove('day-exit');g2.classList.add('day-enter');setTimeout(()=>g2.classList.remove('day-enter'),150);}
+  },100);
+}
 document.addEventListener('keydown',e=>{
   if(viewMode==='layout'){
-    if(e.key==='ArrowRight'&&cur<7) setDay(cur+1);
-    if(e.key==='ArrowLeft'&&cur>1) setDay(cur-1);
+    if(e.key==='ArrowRight'&&cur<importedDayNums[importedDayNums.length-1]) setDay(cur+1);
+    if(e.key==='ArrowLeft'&&cur>importedDayNums[0]) setDay(cur-1);
   }
   if(e.key==='f'||e.key==='F') toggleFS();
 });
