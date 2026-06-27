@@ -107,6 +107,18 @@ button{cursor:pointer;font-family:inherit;transition:all .15s}
       <div id="graph-day-btns" style="display:flex;gap:10px;align-items:center;flex:1;flex-wrap:wrap;justify-content:center"></div>
     </div>
     <div id="graph-content" style="flex:1;overflow:hidden;padding:8px 36px 12px"></div>
+    <!-- Import clear-warning popup -->
+    <div id="graph-import-warn-popup" style="display:none;position:absolute;inset:0;z-index:999;background:rgba(0,0,0,.55);align-items:center;justify-content:center">
+      <div style="background:#0F2044;border:2px solid #F59E0B;border-radius:14px;padding:36px 48px;text-align:center;min-width:380px;box-shadow:0 20px 60px rgba(0,0,0,.7)">
+        <div style="font-size:36px;margin-bottom:12px">⚠️</div>
+        <div style="font-size:18px;font-weight:800;color:#F8FAFC;margin-bottom:8px">Clear All Graph Data?</div>
+        <div id="graph-import-warn-msg" style="font-size:14px;color:#94A3B8;margin-bottom:28px;line-height:1.6"></div>
+        <div style="display:flex;gap:14px;justify-content:center">
+          <button onclick="cancelGraphImport()" style="padding:0 28px;height:42px;border-radius:8px;font-size:14px;font-weight:700;background:rgba(255,255,255,.08);border:2px solid #334155;color:#94A3B8;cursor:pointer">Cancel</button>
+          <button onclick="confirmGraphImport()" style="padding:0 28px;height:42px;border-radius:8px;font-size:14px;font-weight:700;background:#B45309;border:2px solid #F59E0B;color:#fff;cursor:pointer">🗑 Clear &amp; Import</button>
+        </div>
+      </div>
+    </div>
     <!-- Delete confirmation popup -->
     <div id="graph-delete-popup" style="display:none;position:absolute;inset:0;z-index:999;background:rgba(0,0,0,.55);align-items:center;justify-content:center">
       <div style="background:#0F2044;border:2px solid #DC2626;border-radius:14px;padding:36px 48px;text-align:center;min-width:360px;box-shadow:0 20px 60px rgba(0,0,0,.7)">
@@ -1116,8 +1128,22 @@ document.addEventListener('click',e=>{
 });
 // ── Excel Graph Import ──
 function triggerImportGraphExcel(){
-  // Clear existing graph data before new import
-  if(Object.keys(chartData).length>0){ chartData={}; activeGraphDay=null; }
+  const count=Object.keys(chartData).length;
+  if(count>0){
+    document.getElementById('graph-import-warn-msg').innerHTML=
+      `You have <strong style="color:#FCD34D">${count} day${count>1?'s':''}</strong> of graph data already imported.<br><span style="font-size:12px;opacity:.7">This will permanently delete all of it before importing new files.</span>`;
+    document.getElementById('graph-import-warn-popup').style.display='flex';
+    return;
+  }
+  _openGraphFilePicker();
+}
+function cancelGraphImport(){ document.getElementById('graph-import-warn-popup').style.display='none'; }
+function confirmGraphImport(){
+  document.getElementById('graph-import-warn-popup').style.display='none';
+  chartData={}; activeGraphDay=null;
+  _openGraphFilePicker();
+}
+function _openGraphFilePicker(){
   let inp=document.getElementById('_graphFileInp');
   if(!inp){
     inp=document.createElement('input');
